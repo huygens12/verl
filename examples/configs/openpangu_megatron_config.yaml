@@ -1,0 +1,117 @@
+# VERL Configuration for openPangu-Embedded-7B with GRPO algorithm and Megatron backend
+# This configuration provides optimal performance for large-scale distributed training
+
+# Algorithm settings
+algorithm:
+  adv_estimator: "grpo"
+  use_kl_in_reward: false
+
+# Data settings
+data:
+  train_files: null  # Set via environment or command line
+  val_files: null    # Set via environment or command line
+  train_batch_size: 512
+  max_prompt_length: 512
+  max_response_length: 1024
+  filter_overlong_prompts: true
+  truncation: "error"
+
+# Model and Actor Configuration
+actor_rollout_ref:
+  model:
+    path: "FreedomIntelligence/openPangu-Embedded-7B"
+    use_remove_padding: true
+    trust_remote_code: true
+    enable_gradient_checkpointing: true
+
+  # Actor settings with Megatron backend
+  actor:
+    optim:
+      lr: 1e-6
+    strategy: "megatron"  # Megatron backend
+    ppo_mini_batch_size: 128
+    ppo_micro_batch_size_per_gpu: 8
+    use_kl_loss: true
+    kl_loss_coef: 0.001
+    kl_loss_type: "low_var_kl"
+    entropy_coeff: 0
+
+  # Rollout settings
+  rollout:
+    log_prob_micro_batch_size_per_gpu: 16
+    tensor_model_parallel_size: 4
+    name: "vllm"
+    gpu_memory_utilization: 0.6
+    n: 5  # number of rollouts per prompt
+
+  # Reference model settings with Megatron backend
+  ref:
+    strategy: "megatron"  # Megatron backend
+    log_prob_micro_batch_size_per_gpu: 16
+
+# Megatron-specific configuration
+megatron_config:
+  # Model parallelism
+  tensor_model_parallel_size: 4
+  pipeline_model_parallel_size: 1
+
+  # Optimization
+  use_distributed_optimizer: true
+  sequence_parallel_enabled: true
+
+  # Precision
+  fp16: true
+  bf16: false
+  params_dtype: "fp16"
+
+  # Performance
+  timers: true
+
+  # Memory optimization
+  gradient_accumulation_fusion: true
+
+  # Training
+  DDP_impl: "torch"
+  use_cpu_initialization: false
+
+# Trainer settings
+trainer:
+  critic_warmup: 0
+  logger: '["console"]'
+  project_name: "verl_grpo_openpangu_megatron"
+  experiment_name: "openpangu_7b_grpo_megatron"
+  n_gpus_per_node: 8
+  nnodes: 1
+  save_freq: 10
+  test_freq: 2
+  total_epochs: 20
+
+# Advanced settings (optional)
+# Uncomment and modify as needed:
+
+# # For multi-node training
+# trainer:
+#   nnodes: 2
+#   node_rank: 0
+#   master_addr: "localhost"
+#   master_port: 29500
+
+# # For larger tensor parallelism
+# megatron_config:
+#   tensor_model_parallel_size: 8
+
+# # For pipeline parallelism (useful for very large models)
+# megatron_config:
+#   pipeline_model_parallel_size: 2
+
+# # For different precision
+# megatron_config:
+#   bf16: true
+#   fp16: false
+#   params_dtype: "bf16"
+
+# # For larger batch sizes
+# data:
+#   train_batch_size: 1024
+# actor_rollout_ref.actor:
+#   ppo_micro_batch_size_per_gpu: 4

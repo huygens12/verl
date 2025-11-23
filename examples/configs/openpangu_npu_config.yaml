@@ -1,0 +1,107 @@
+# VERL Configuration for openPangu-Embedded-7B with GRPO algorithm optimized for NPU
+# This configuration is specifically tuned for Ascend NPU hardware
+
+# Algorithm settings
+algorithm:
+  adv_estimator: "grpo"
+  use_kl_in_reward: false
+
+# Data settings optimized for NPU processing
+data:
+  train_files: null  # Set via environment or command line
+  val_files: null    # Set via environment or command line
+  train_batch_size: 1024
+  max_prompt_length: 512
+  max_response_length: 1024
+  filter_overlong_prompts: true
+  truncation: "error"
+
+# Model and Actor Configuration optimized for NPU
+actor_rollout_ref:
+  model:
+    path: "FreedomIntelligence/openPangu-Embedded-7B"
+    use_remove_padding: false  # NPU optimization
+    trust_remote_code: true
+    enable_gradient_checkpointing: true
+
+  # Actor settings optimized for NPU
+  actor:
+    optim:
+      lr: 5e-8  # Lower learning rate for NPU stability
+    ppo_mini_batch_size: 32
+    ppo_micro_batch_size_per_gpu: 2  # Small batch size for NPU memory
+    use_kl_loss: true
+    kl_loss_coef: 0.001
+    kl_loss_type: "low_var_kl"
+    entropy_coeff: 0
+    fsdp_config:
+      param_offload: false
+      optimizer_offload: false
+
+  # Rollout settings with NPU optimizations
+  rollout:
+    log_prob_micro_batch_size_per_gpu: 2
+    tensor_model_parallel_size: 4
+    name: "vllm"
+    gpu_memory_utilization: 0.3  # Conservative for NPU
+    n: 5  # number of rollouts per prompt
+    enable_chunked_prefill: false  # NPU optimization
+
+  # Reference model settings
+  ref:
+    log_prob_micro_batch_size_per_gpu: 2
+    fsdp_config:
+      param_offload: true
+
+# Trainer settings optimized for NPU
+trainer:
+  critic_warmup: 0
+  logger: '["console"]'
+  project_name: "verl_grpo_openpangu_npu"
+  experiment_name: "openpangu_7b_grpo_npu"
+  n_gpus_per_node: 16  # Typical NPU cluster size
+  nnodes: 1
+  save_freq: -1  # Disable frequent saving for NPU
+  test_freq: 5
+  total_epochs: 5
+  device: "npu"  # Explicit NPU device specification
+
+# NPU-specific optimizations
+npu_config:
+  # Memory management
+  use_npu_specific_optimizations: true
+  memory_pool_size: "8GB"
+
+  # Communication
+  use_hccl: true  # Ascend's communication library
+  communication_backend: "hccl"
+
+  # Precision
+  npu_fp16: true
+  mixed_precision: true
+
+  # Performance tuning
+  enable_graph_kernel_fusion: true
+  enable_dynamic_shape: false
+
+  # Scheduling
+  npu_scheduling_policy: "priority"
+
+# Advanced NPU settings (optional)
+# Uncomment and modify as needed:
+
+# # For different NPU memory constraints
+# actor_rollout_ref.rollout.gpu_memory_utilization: 0.25
+# actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu: 1
+
+# # For larger NPU clusters
+# trainer.n_gpus_per_node: 32
+# actor_rollout_ref.rollout.tensor_model_parallel_size: 8
+
+# # For longer training runs
+# trainer.total_epochs: 20
+# trainer.save_freq: 10
+
+# # For debugging on NPU
+# npu_config.debug_mode: true
+# npu_config.enable_profiling: true

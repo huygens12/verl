@@ -36,6 +36,10 @@ _MODELS = {
         "apertus",
         ("ParallelApertusForCausalLMRmPadPP", "ParallelApertusForValueRmPadPP", "ParallelApertusForCausalLMRmPad"),
     ),
+    "PanguForCausalLM": (
+        "pangu",
+        ("ParallelPanguForCausalLMRmPadPP", "ParallelPanguForValueRmPadPP", "ParallelPanguForCausalLMRmPad"),
+    ),
 }
 
 
